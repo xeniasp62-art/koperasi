@@ -121,10 +121,8 @@
   </div>
 </div>
 
-<!-- SCRIPT -->
 <script src="js/storage.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/kas.js"></script>
 
 <script>
   cekLogin();
@@ -134,39 +132,27 @@
   }
 
   function loadDashboard(){
-  const db = getDB();
-  let saldo = 0;
+    let saldo = 0;
 
-  // SIMPANAN = MASUK
-  db.simpanan.forEach(s=>{
-    saldo += Number(s.jumlah);
-  });
-
-  // ANGSURAN = MASUK
-  db.transaksi
-    .filter(t=>t.jenis==="BAYAR")
-    .forEach(t=>{
-      saldo += Number(t.jumlah);
+    // SIMPANAN (MASUK)
+    getSimpanan().forEach(s=>{
+      saldo += Number(s.jumlah || 0);
     });
 
-  // PINJAMAN = KELUAR
-  db.pinjaman.forEach(p=>{
-    saldo -= Number(p.jumlah);
-  });
+    // ANGSURAN (MASUK)
+    getTransaksi()
+      .filter(t=>t.jenis === "BAYAR")
+      .forEach(t=>{
+        saldo += Number(t.jumlah || 0);
+      });
 
-  document.getElementById("totalSaldo").innerText =
-    "Rp " + saldo.toLocaleString("id-ID");
-}
+    // PINJAMAN (KELUAR)
+    getPinjaman().forEach(p=>{
+      saldo -= Number(p.jumlah || 0);
+    });
 
-  function logout(){
-    if(confirm("Yakin ingin logout?")){
-      localStorage.removeItem("login");
-      location.href = "login.html";
-    }
+    document.getElementById("totalSaldo").innerText = rupiah(saldo);
   }
 
   loadDashboard();
 </script>
-
-</body>
-</html>
