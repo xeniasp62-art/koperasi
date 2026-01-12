@@ -8,6 +8,8 @@ function loadAnggota(){
   const sel = document.getElementById("anggota");
   sel.innerHTML = "<option value=''>-- Pilih Anggota --</option>";
 
+  if(!db.anggota) return;
+
   db.anggota.forEach(a=>{
     sel.innerHTML += `<option value="${a.id}">${a.nama}</option>`;
   });
@@ -17,13 +19,10 @@ function loadAnggota(){
    UBAH JENIS
 ===================== */
 function ubahJenis(){
-  const jenis = document.getElementById("jenis").value;
-  document.getElementById("pinjaman").style.display =
-    jenis === "BAYAR" ? "block" : "none";
+  const jenis = jenisEl.value;
+  pinjamanEl.style.display = jenis === "BAYAR" ? "block" : "none";
 
-  if(jenis === "BAYAR"){
-    loadPinjamanAnggota();
-  }
+  if(jenis === "BAYAR") loadPinjamanAnggota();
 }
 
 /* =====================
@@ -31,15 +30,16 @@ function ubahJenis(){
 ===================== */
 function loadPinjamanAnggota(){
   const db = getDB();
-  const anggota = document.getElementById("anggota").value;
-  const sel = document.getElementById("pinjaman");
+  const anggota = anggotaEl.value;
 
-  sel.innerHTML = "<option value=''>-- Pilih Pinjaman --</option>";
+  pinjamanEl.innerHTML = "<option value=''>-- Pilih Pinjaman --</option>";
+
+  if(!anggota) return;
 
   db.pinjaman
     .filter(p=>p.anggota_id===anggota && p.status==="Aktif")
     .forEach(p=>{
-      sel.innerHTML += `
+      pinjamanEl.innerHTML += `
         <option value="${p.id}">
           ${p.id} - Sisa Rp ${p.sisa.toLocaleString("id-ID")}
         </option>`;
@@ -58,16 +58,27 @@ function simpanTransaksi(e){
   const jumlah = Number(jumlahEl.value);
   const tanggal = tanggalEl.value;
 
+  if(!jenis || !anggota || !jumlah || !tanggal){
+    alert("Data belum lengkap");
+    return;
+  }
+
+  if(jenis === "BAYAR" && !pinjamanEl.value){
+    alert("Pilih pinjaman");
+    return;
+  }
+
+  // ===== EDIT MODE =====
   if(editIndex !== null){
     batalkanEfek(db.transaksi[editIndex], db);
     db.transaksi.splice(editIndex,1);
     editIndex = null;
   }
 
-  // PROSES BARU
+  // ===== SETOR =====
   if(jenis === "SETOR"){
     db.simpanan.push({
-      id: "SP" + String(db.simpanan.length+1).padStart(3,"0"),
+      id: "SP" + Date.now(),
       anggota_id: anggota,
       jenis: "Sukarela",
       jumlah,
@@ -75,9 +86,12 @@ function simpanTransaksi(e){
     });
   }
 
+  // ===== BAYAR =====
+  let pid = null;
   if(jenis === "BAYAR"){
-    const pid = pinjamanEl.value;
+    pid = pinjamanEl.value;
     const p = db.pinjaman.find(x=>x.id===pid);
+    if(!p) return alert("Pinjaman tidak ditemukan");
 
     p.sisa -= jumlah;
     if(p.sisa <= 0){
@@ -86,13 +100,14 @@ function simpanTransaksi(e){
     }
   }
 
+  // ===== SIMPAN TRANSAKSI =====
   db.transaksi.push({
-    id: "TR" + String(db.transaksi.length+1).padStart(3,"0"),
+    id: "TR" + Date.now(),
     anggota_id: anggota,
     jenis,
     jumlah,
     tanggal,
-    pinjaman_id: jenis==="BAYAR" ? pinjamanEl.value : null
+    pinjaman_id: pid
   });
 
   saveDB(db);
@@ -101,17 +116,23 @@ function simpanTransaksi(e){
 }
 
 /* =====================
-   BATALKAN EFEK
+   BATALKAN EFEK (FIX)
 ===================== */
 function batalkanEfek(tr, db){
   if(tr.jenis === "SETOR"){
-    db.simpanan.pop();
+    db.simpanan = db.simpanan.filter(
+      s=>!(s.anggota_id===tr.anggota_id &&
+           s.jumlah===tr.jumlah &&
+           s.tanggal===tr.tanggal)
+    );
   }
 
   if(tr.jenis === "BAYAR"){
     const p = db.pinjaman.find(x=>x.id===tr.pinjaman_id);
-    p.sisa += tr.jumlah;
-    p.status = "Aktif";
+    if(p){
+      p.sisa += tr.jumlah;
+      p.status = "Aktif";
+    }
   }
 }
 
@@ -138,14 +159,12 @@ function editTransaksi(i){
 }
 
 /* =====================
-   BATAL
+   HAPUS
 ===================== */
 function hapusTransaksi(i){
   if(confirm("Batalkan transaksi ini?")){
     const db = getDB();
-    const t = db.transaksi[i];
-
-    batalkanEfek(t, db);
+    batalkanEfek(db.transaksi[i], db);
     db.transaksi.splice(i,1);
     saveDB(db);
     loadTransaksi();
@@ -180,7 +199,7 @@ function loadTransaksi(){
 }
 
 /* =====================
-   SHORTCUT ELEMENT
+   ELEMENT
 ===================== */
 const jenisEl = document.getElementById("jenis");
 const anggotaEl = document.getElementById("anggota");
