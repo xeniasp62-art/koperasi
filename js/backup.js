@@ -1,43 +1,98 @@
+let editIndex = null;
+
 /* =====================
-   BACKUP
+   LOAD DATA
 ===================== */
-function backup(){
+function loadAnggota(){
   const db = getDB();
-  const data = JSON.stringify(db, null, 2);
+  const tbody = document.getElementById("listAnggota");
+  tbody.innerHTML = "";
 
-  const blob = new Blob([data], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
+  if(!db.anggota) return;
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "backup_koperasi.json";
-  a.click();
-
-  URL.revokeObjectURL(url);
+  db.anggota.forEach((a, i) => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${a.id}</td>
+        <td>${a.nama}</td>
+        <td>${a.alamat}</td>
+        <td>${a.telp}</td>
+        <td class="action">
+          <button onclick="editAnggota(${i})">✏️</button>
+          <button onclick="hapusAnggota(${i})">🗑️</button>
+        </td>
+      </tr>
+    `;
+  });
 }
 
 /* =====================
-   RESTORE
+   SIMPAN / UPDATE
 ===================== */
-function restore(){
-  const file = document.getElementById("fileRestore").files[0];
-  if(!file){
-    alert("Pilih file backup!");
+function simpanAnggota(e){
+  e.preventDefault();
+  const db = getDB();
+
+  const nama = document.getElementById("nama").value.trim();
+  const alamat = document.getElementById("alamat").value.trim();
+  const telp = document.getElementById("telp").value.trim();
+
+  if(!nama || !alamat || !telp){
+    alert("Semua data wajib diisi");
     return;
   }
 
-  if(!confirm("Data lama akan diganti. Lanjutkan?")) return;
+  if(editIndex !== null){
+    db.anggota[editIndex].nama = nama;
+    db.anggota[editIndex].alamat = alamat;
+    db.anggota[editIndex].telp = telp;
+    editIndex = null;
+  }else{
+    db.anggota.push({
+      id: "AG" + Date.now(),
+      nama,
+      alamat,
+      telp
+    });
+  }
 
-  const reader = new FileReader();
-  reader.onload = function(e){
-    try{
-      const db = JSON.parse(e.target.result);
-      localStorage.setItem("koperasiDB", JSON.stringify(db));
-      alert("Restore berhasil!");
-      location.reload();
-    }catch(err){
-      alert("File backup tidak valid!");
-    }
-  };
-  reader.readAsText(file);
+  saveDB(db);
+  resetForm();
+  loadAnggota();
+}
+
+/* =====================
+   EDIT
+===================== */
+function editAnggota(index){
+  const db = getDB();
+  const a = db.anggota[index];
+
+  document.getElementById("nama").value = a.nama;
+  document.getElementById("alamat").value = a.alamat;
+  document.getElementById("telp").value = a.telp;
+
+  editIndex = index;
+}
+
+/* =====================
+   HAPUS
+===================== */
+function hapusAnggota(index){
+  if(confirm("Hapus anggota ini?")){
+    const db = getDB();
+    db.anggota.splice(index,1);
+    saveDB(db);
+    loadAnggota();
+  }
+}
+
+/* =====================
+   RESET
+===================== */
+function resetForm(){
+  document.getElementById("nama").value = "";
+  document.getElementById("alamat").value = "";
+  document.getElementById("telp").value = "";
+  editIndex = null;
 }
