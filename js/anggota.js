@@ -1,4 +1,5 @@
-let editMode = false;
+
+let editIndex = null;
 
 /* =====================
    LOAD DATA
@@ -7,6 +8,8 @@ function loadAnggota(){
   const db = getDB();
   const tbody = document.getElementById("listAnggota");
   tbody.innerHTML = "";
+
+  if(!db.anggota) return;
 
   db.anggota.forEach((a, i) => {
     tbody.innerHTML += `
@@ -29,20 +32,25 @@ function loadAnggota(){
 ===================== */
 function simpanAnggota(e){
   e.preventDefault();
-
   const db = getDB();
-  const id = document.getElementById("idAnggota").value;
-  const nama = document.getElementById("nama").value;
-  const alamat = document.getElementById("alamat").value;
-  const telp = document.getElementById("telp").value;
 
-  if(editMode){
-    const idx = db.anggota.findIndex(a => a.id === id);
-    db.anggota[idx] = { id, nama, alamat, telp };
+  const nama = document.getElementById("nama").value.trim();
+  const alamat = document.getElementById("alamat").value.trim();
+  const telp = document.getElementById("telp").value.trim();
+
+  if(!nama || !alamat || !telp){
+    alert("Semua data wajib diisi");
+    return;
+  }
+
+  if(editIndex !== null){
+    db.anggota[editIndex].nama = nama;
+    db.anggota[editIndex].alamat = alamat;
+    db.anggota[editIndex].telp = telp;
+    editIndex = null;
   }else{
-    const newID = "AG" + String(db.anggota.length + 1).padStart(3,"0");
     db.anggota.push({
-      id: newID,
+      id: "AG" + Date.now(),
       nama,
       alamat,
       telp
@@ -61,12 +69,11 @@ function editAnggota(index){
   const db = getDB();
   const a = db.anggota[index];
 
-  document.getElementById("idAnggota").value = a.id;
   document.getElementById("nama").value = a.nama;
   document.getElementById("alamat").value = a.alamat;
   document.getElementById("telp").value = a.telp;
 
-  editMode = true;
+  editIndex = index;
 }
 
 /* =====================
@@ -82,12 +89,11 @@ function hapusAnggota(index){
 }
 
 /* =====================
-   RESET FORM
+   RESET
 ===================== */
 function resetForm(){
-  document.getElementById("idAnggota").value = "";
   document.getElementById("nama").value = "";
   document.getElementById("alamat").value = "";
   document.getElementById("telp").value = "";
-  editMode = false;
+  editIndex = null;
 }
