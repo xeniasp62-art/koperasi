@@ -8,46 +8,41 @@
 <style>
 body{margin:0;font-family:Arial;background:#f4f6f9;}
 header{background:#1e90ff;color:white;padding:15px;display:flex;justify-content:space-between;align-items:center;}
-header button{background:#ff5252;border:none;color:white;padding:6px 10px;border-radius:5px;cursor:pointer;}
+header button{border:none;padding:6px 12px;border-radius:5px;cursor:pointer;}
 .container{padding:20px;}
 .box{background:white;padding:15px;border-radius:8px;margin-bottom:15px;}
-select{width:100%;padding:8px;margin:5px 0;}
+select{width:100%;padding:8px;margin:8px 0;}
 table{width:100%;border-collapse:collapse;}
 th,td{border:1px solid #ddd;padding:8px;text-align:center;}
 th{background:#eee;}
 .in{color:green;}
 .out{color:red;}
 .total{font-weight:bold;margin-top:10px;}
-.status-lunas{color:green;font-weight:bold;}
-.status-belum{color:red;font-weight:bold;}
-button.export{background:#1e90ff;margin-top:5px;}
 </style>
 
-<!-- JSPDF -->
+<!-- PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-
 </head>
+
 <body>
 
 <header>
   <h3>📄 Laporan Pinjaman & Angsuran</h3>
-  <button onclick="location.href='dashboard.html'">⬅ Dashboard</button>
+  <button onclick="back()">⬅ Dashboard</button>
 </header>
 
 <div class="container">
 
-  <!-- PILIH ANGGOTA -->
   <div class="box">
     <label>Pilih Anggota</label>
     <select id="pilihAnggota" onchange="loadLaporan()">
       <option value="">-- Pilih Nama --</option>
     </select>
-    <button class="export" onclick="exportPDF()">📄 Export PDF</button>
-    <button class="export" onclick="exportWA()">📲 Export ke WhatsApp</button>
+    <button onclick="exportPDF()">📄 Export PDF</button>
+    <button onclick="exportWA()">📲 Export WhatsApp</button>
   </div>
 
-  <!-- TABEL LAPORAN -->
   <div class="box">
     <table>
       <thead>
@@ -77,71 +72,67 @@ button.export{background:#1e90ff;margin-top:5px;}
 <script>
 cekLogin();
 
-/* ===== FORMAT RUPIAH ===== */
 function rupiah(n){
-  return "Rp " + Number(n||0).toLocaleString("id-ID");
+  return "Rp " + (Number(n)||0).toLocaleString("id-ID");
 }
 
-/* ===== AMBIL NAMA ANGGOTA ===== */
+function back(){
+  location.replace("dashboard.html");
+}
+
+/* ===== LOAD ANGGOTA ===== */
 function loadAnggota(){
   const db = getDB();
-  const select = document.getElementById("pilihAnggota");
-  select.innerHTML = `<option value="">-- Pilih Nama --</option>`;
+  const sel = document.getElementById("pilihAnggota");
+  sel.innerHTML = `<option value="">-- Pilih Nama --</option>`;
 
   db.anggota.forEach(a=>{
-    if(a.nama){
-      const opt = document.createElement("option");
-      opt.value = a.nama;
-      opt.textContent = a.nama;
-      select.appendChild(opt);
-    }
+    sel.innerHTML += `<option value="${a.id}">${a.nama}</option>`;
   });
 }
 
-/* ===== LOAD LAPORAN PINJAMAN & ANGSURAN ===== */
+/* ===== LOAD LAPORAN ===== */
 function loadLaporan(){
-  const nama = document.getElementById("pilihAnggota").value;
+  const anggota_id = document.getElementById("pilihAnggota").value;
   const tbody = document.getElementById("listLaporan");
   const db = getDB();
 
-  tbody.innerHTML = "";
-  if(!nama) return;
+  tbody.innerHTML="";
+  if(!anggota_id) return;
 
   let totalPinjaman = 0;
   let totalBayar = 0;
+  let status = "-";
 
-  /* PINJAMAN */
-  db.pinjaman
-    .filter(p=>p.nama===nama)
-    .forEach(p=>{
-      totalPinjaman += Number(p.jumlah);
-      tbody.innerHTML += `
-        <tr>
-          <td>${p.tanggal || "-"}</td>
-          <td>Pinjaman</td>
-          <td class="out">${rupiah(p.jumlah)}</td>
-          <td>-</td>
-        </tr>
-      `;
-    });
+  const pinjaman = db.pinjaman.filter(p=>p.anggota_id===anggota_id);
 
-  /* ANGSURAN */
-  db.transaksi
-    .filter(t=>{
-      const pin = db.pinjaman.find(p=>p.id===t.pinjamanId);
-      return pin && pin.nama===nama && t.jenis==="BAYAR";
-    })
-    .forEach(t=>{
-      totalBayar += Number(t.jumlah);
-      tbody.innerHTML += `
-        <tr>
-          <td>${t.tanggal || "-"}</td>
-          <td>Angsuran</td>
-          <td>-</td>
-          <td class="in">${rupiah(t.jumlah)}</td>
-        </tr>
-      `;
-    });
+  pinjaman.forEach(p=>{
+    totalPinjaman += p.jumlah;
+    status = p.status;
+
+    tbody.innerHTML += `
+      <tr>
+        <td>-</td>
+        <td>Pinjaman</td>
+        <td class="out">${rupiah(p.jumlah)}</td>
+        <td>-</td>
+      </tr>
+    `;
+
+    db.transaksi
+      .filter(t=>t.pinjaman_id===p.id && t.jenis==="BAYAR")
+      .forEach(t=>{
+        totalBayar += t.jumlah;
+        tbody.innerHTML += `
+          <tr>
+            <td>${t.tanggal || "-"}</td>
+            <td>Angsuran</td>
+            <td>-</td>
+            <td class="in">${rupiah(t.jumlah)}</td>
+          </tr>
+        `;
+      });
+  });
 
   const sisa = totalPinjaman - totalBayar;
 
@@ -150,52 +141,31 @@ function loadLaporan(){
   document.getElementById("sisaPinjaman").innerText = rupiah(sisa);
 
   const statusEl = document.getElementById("statusPinjaman");
-  if(sisa <=0 && totalPinjaman>0){
-    statusEl.innerText = "LUNAS";
-    statusEl.style.color="green";
-  } else if(totalPinjaman>0){
-    statusEl.innerText = "BELUM LUNAS";
-    statusEl.style.color="red";
-  } else {
-    statusEl.innerText = "-";
-    statusEl.style.color="black";
-  }
+  statusEl.innerText = status;
+  statusEl.style.color = status==="Lunas" ? "green" : "red";
 }
 
 /* ===== EXPORT PDF ===== */
 function exportPDF(){
+  const id = pilihAnggota.value;
+  if(!id){ alert("Pilih anggota"); return; }
+
+  const nama = document.querySelector(`#pilihAnggota option[value="${id}"]`).text;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-  const nama = document.getElementById("pilihAnggota").value;
-  if(!nama){ alert("Pilih anggota terlebih dahulu!"); return; }
 
-  doc.setFontSize(14);
-  doc.text(`Laporan Pinjaman & Angsuran - ${nama}`, 14, 20);
+  doc.text(`Laporan Pinjaman - ${nama}`,14,20);
 
-  const totalPin = document.getElementById("totalPinjaman").innerText;
-  const totalBay = document.getElementById("totalBayar").innerText;
-  const sisa = document.getElementById("sisaPinjaman").innerText;
-  const status = document.getElementById("statusPinjaman").innerText;
-
-  doc.setFontSize(12);
-  doc.text(`Total Pinjaman: ${totalPin}`, 14, 30);
-  doc.text(`Total Bayar: ${totalBay}`, 14, 38);
-  doc.text(`Sisa Pinjaman: ${sisa}`, 14, 46);
-  doc.text(`Status: ${status}`, 14, 54);
-
-  const rows = [];
+  const rows=[];
   document.querySelectorAll("#listLaporan tr").forEach(tr=>{
-    const cols = tr.querySelectorAll("td");
-    rows.push([cols[0].innerText, cols[1].innerText, cols[2].innerText, cols[3].innerText]);
+    const td=tr.querySelectorAll("td");
+    rows.push([td[0].innerText,td[1].innerText,td[2].innerText,td[3].innerText]);
   });
 
   doc.autoTable({
-    startY: 60,
+    startY:30,
     head:[["Tanggal","Keterangan","Pinjaman","Bayar"]],
-    body: rows,
-    theme:"grid",
-    headStyles:{fillColor:[30,144,255],textColor:255},
-    styles:{cellPadding:3}
+    body:rows
   });
 
   doc.save(`Laporan_Pinjaman_${nama}.pdf`);
@@ -203,26 +173,18 @@ function exportPDF(){
 
 /* ===== EXPORT WA ===== */
 function exportWA(){
-  const nama = document.getElementById("pilihAnggota").value;
-  if(!nama){ alert("Pilih anggota terlebih dahulu!"); return; }
+  const id = pilihAnggota.value;
+  if(!id){ alert("Pilih anggota"); return; }
 
-  let text = `Laporan Pinjaman & Angsuran - ${nama}\n\n`;
-  text += `Total Pinjaman: ${document.getElementById("totalPinjaman").innerText}\n`;
-  text += `Total Bayar: ${document.getElementById("totalBayar").innerText}\n`;
-  text += `Sisa Pinjaman: ${document.getElementById("sisaPinjaman").innerText}\n`;
-  text += `Status: ${document.getElementById("statusPinjaman").innerText}\n\n`;
-  text += "Tanggal | Keterangan | Pinjaman | Bayar\n";
-
+  let text="Laporan Pinjaman\n\n";
   document.querySelectorAll("#listLaporan tr").forEach(tr=>{
-    const tds = tr.querySelectorAll("td");
-    text += `${tds[0].innerText} | ${tds[1].innerText} | ${tds[2].innerText} | ${tds[3].innerText}\n`;
+    const td=tr.querySelectorAll("td");
+    text+=`${td[0].innerText} | ${td[1].innerText} | ${td[2].innerText} | ${td[3].innerText}\n`;
   });
 
-  const waLink = `https://wa.me/?text=${encodeURIComponent(text)}`;
-  window.open(waLink,'_blank');
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
 }
 
-/* ===== INIT ===== */
 loadAnggota();
 </script>
 
