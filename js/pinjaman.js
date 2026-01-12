@@ -2,11 +2,11 @@
    LOAD ANGGOTA
 ===================== */
 function loadAnggota(){
-  const db = getDB();
+  const anggota = getAnggota();
   const sel = document.getElementById("anggota");
   sel.innerHTML = "<option value=''>-- Pilih Anggota --</option>";
 
-  db.anggota.forEach(a=>{
+  anggota.forEach(a=>{
     sel.innerHTML += `<option value="${a.id}">${a.nama}</option>`;
   });
 }
@@ -23,13 +23,15 @@ function hitungAngsuran(){
   const bunga = Number(document.getElementById("bunga").value);
   const tenor = Number(document.getElementById("tenor").value);
 
-  if(jumlah && bunga && tenor){
+  if(jumlah > 0 && bunga >= 0 && tenor > 0){
     const totalBunga = jumlah * (bunga/100) * tenor;
     const total = jumlah + totalBunga;
     const angsuran = total / tenor;
 
     document.getElementById("angsuran").value =
       "Rp " + Math.round(angsuran).toLocaleString("id-ID");
+  }else{
+    document.getElementById("angsuran").value = "";
   }
 }
 
@@ -38,23 +40,26 @@ function hitungAngsuran(){
 ===================== */
 function simpanPinjaman(e){
   e.preventDefault();
-  const db = getDB();
 
-  const pinjaman = {
-    id: "PJ" + String(db.pinjaman.length+1).padStart(3,"0"),
-    anggota_id: anggota.value,
-    jumlah: Number(jumlah.value),
-    bunga: Number(bunga.value),
-    tenor: Number(tenor.value),
-    sisa: Number(jumlah.value),
+  const pinjaman = getPinjaman();
+
+  const data = {
+    id: "PJ" + String(pinjaman.length + 1).padStart(3,"0"),
+    anggota_id: document.getElementById("anggota").value,
+    tanggal: new Date().toISOString().split("T")[0],
+    jumlah: Number(document.getElementById("jumlah").value),
+    bunga: Number(document.getElementById("bunga").value),
+    tenor: Number(document.getElementById("tenor").value),
+    sisa: Number(document.getElementById("jumlah").value),
     status: "Aktif"
   };
 
-  db.pinjaman.push(pinjaman);
-  saveDB(db);
+  pinjaman.push(data);
+  savePinjaman(pinjaman);
 
   e.target.reset();
-  document.getElementById("angsuran").value="";
+  document.getElementById("angsuran").value = "";
+
   loadPinjaman();
 }
 
@@ -62,14 +67,15 @@ function simpanPinjaman(e){
    LOAD PINJAMAN
 ===================== */
 function loadPinjaman(){
-  const db = getDB();
+  const pinjaman = getPinjaman();
+  const anggota = getAnggota();
   const tbody = document.getElementById("listPinjaman");
-  tbody.innerHTML="";
+  tbody.innerHTML = "";
 
-  db.pinjaman.forEach((p,i)=>{
-    const a = db.anggota.find(x=>x.id===p.anggota_id);
+  pinjaman.forEach((p,i)=>{
+    const a = anggota.find(x=>x.id === p.anggota_id);
 
-    tbody.innerHTML+=`
+    tbody.innerHTML += `
       <tr>
         <td>${a ? a.nama : "-"}</td>
         <td>Rp ${p.jumlah.toLocaleString("id-ID")}</td>
@@ -89,16 +95,17 @@ function loadPinjaman(){
    BAYAR ANGSURAN
 ===================== */
 function bayarAngsuran(index){
-  const db = getDB();
-  const p = db.pinjaman[index];
+  const pinjaman = getPinjaman();
+  const transaksi = getTransaksi();
 
-  if(p.status==="Lunas"){
+  const p = pinjaman[index];
+  if(!p || p.status === "Lunas"){
     alert("Pinjaman sudah lunas");
     return;
   }
 
-  const total = p.jumlah + (p.jumlah*(p.bunga/100)*p.tenor);
-  const angsuran = total / p.tenor;
+  const total = p.jumlah + (p.jumlah * (p.bunga/100) * p.tenor);
+  const angsuran = Math.round(total / p.tenor);
 
   p.sisa -= angsuran;
 
@@ -107,6 +114,15 @@ function bayarAngsuran(index){
     p.status = "Lunas";
   }
 
-  saveDB(db);
+  transaksi.push({
+    tanggal: new Date().toISOString().split("T")[0],
+    jenis: "BAYAR",
+    pinjaman_id: p.id,
+    jumlah: angsuran
+  });
+
+  savePinjaman(pinjaman);
+  saveTransaksi(transaksi);
+
   loadPinjaman();
 }
