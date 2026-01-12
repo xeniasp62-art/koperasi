@@ -83,28 +83,29 @@ th{background:#eee}
     
   </div>
 
-
-  <!-- EXPORT -->
+<!-- EXPORT -->
   <button onclick="exportPDF()">📄 Export PDF</button>
   <button onclick="exportWA()">📲 Export ke WhatsApp</button>
 
-  
+</div> <!-- end container -->
 
-<!-- LIBRARY JSPDF -->
+<!-- ===== LIBRARY ===== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
-<script src="js/storage.js"></script>
-<script src="js/kas.js"></script
-</div>
-<script src="https:                                                                        
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-
+<!-- ===== DATA & LOGIC ===== -->
 <script src="js/storage.js"></script>
 <script src="js/kas.js"></script>
+
+<!-- ===== INIT ===== -->
 <script>
-  loadKas();
+document.addEventListener("DOMContentLoaded", ()=>{
+  if(document.getElementById("listKas")){
+    loadKas();
+  }
+});
 </script>
 
 </body>
 </html>
+ 
