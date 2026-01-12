@@ -1,67 +1,43 @@
 /* =====================
-   AUTH KOPERASI (FIX GITHUB PAGES)
+   AUTH SESSION (FIX)
 ===================== */
 
-/* =====================
-   INIT DUMMY DB
-===================== */
-function getDB(){
-    if(!localStorage.getItem("koperasi_db")){
-        const db = {
-            user: {
-                username: "admin", // username default
-                password: "1234"   // password default
-            }
-        };
-        localStorage.setItem("koperasi_db", JSON.stringify(db));
-    }
+// LOGIN
+function login(e){
+  if(e) e.preventDefault();
 
-    return JSON.parse(localStorage.getItem("koperasi_db"));
+  const user = document.getElementById("username").value.trim();
+  const pass = document.getElementById("password").value.trim();
+
+  if(!user || !pass){
+    alert("Username & password wajib diisi");
+    return;
+  }
+
+  // USER DEFAULT
+  if(user === "admin" && pass === "1234"){
+    localStorage.setItem("koperasi_login", "1");
+    location.replace("dashboard.html"); // PENTING
+  }else{
+    alert("Username / Password salah");
+  }
 }
 
 /* =====================
-   LOGIN
-===================== */
-function login(){
-    const user = document.getElementById("username").value.trim();
-    const pass = document.getElementById("password").value.trim();
-    const errorBox = document.getElementById("error");
-
-    if(!user || !pass){
-        errorBox.style.display = "block";
-        errorBox.innerText = "Username & password wajib diisi";
-        return;
-    }
-
-    const data = getDB();
-
-    if(user === data.user.username && pass === data.user.password){
-        localStorage.setItem("koperasi_login", "true");
-        localStorage.setItem("koperasi_user", user);
-
-        window.location.href = "dashboard.html";
-    }else{
-        errorBox.style.display = "block";
-        errorBox.innerText = "Username atau password salah";
-    }
-}
-
-/* =====================
-   CEK LOGIN (dipakai di semua halaman)
+   CEK LOGIN
 ===================== */
 function cekLogin(){
-    if(localStorage.getItem("koperasi_login") !== "true"){
-        window.location.href = "index.html";
-    }
+  if(localStorage.getItem("koperasi_login") !== "1"){
+    location.replace("index.html");
+  }
 }
 
 /* =====================
-   LOGOUT
+   LOGOUT (FIX APK)
 ===================== */
 function logout(){
-    if(confirm("Yakin ingin logout?")){
-        localStorage.removeItem("koperasi_login");
-        localStorage.removeItem("koperasi_user");
-        window.location.href = "index.html";
-    }
+  if(confirm("Yakin ingin logout?")){
+    localStorage.clear();
+    location.replace("index.html"); // BUKAN href
+  }
 }
