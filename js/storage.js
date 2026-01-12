@@ -1,7 +1,9 @@
 /* =====================
-   STORAGE KOPERASI (FIX)
+   STORAGE KOPERASI (FINAL)
+   Compatible dengan file lama & baru
 ===================== */
 
+/* ===== USER ===== */
 function getUser(){
   return JSON.parse(localStorage.getItem("koperasi_user_data") || "null");
 }
@@ -47,4 +49,18 @@ function getKas(){
 }
 function saveKas(data){
   localStorage.setItem("koperasi_kas", JSON.stringify(data));
+}
+
+/* =====================
+   DB WRAPPER (WAJIB)
+   supaya kas.js & laporan.js TIDAK ERROR
+===================== */
+function getDB(){
+  return {
+    anggota: getAnggota(),
+    simpanan: getSimpanan(),
+    pinjaman: getPinjaman(),
+    transaksi: getTransaksi(),
+    kas: getKas()
+  };
 }
